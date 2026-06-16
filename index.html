@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VISITE | Cinemática Contemplativa 2.5D</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+    <style>
+        /* ================= ESTILOS GLOBALES ================= */
+        :root {
+            --mountain-back: #4a154b;
+            --mountain-mid: #2c0b3b;
+            --mountain-front: #0d0314;
+            --cave-mid: #0a2239;
+            --cave-front: #01080f;
+            --abyssal-mid: #031424;
+            --abyssal-front: #01060b;
+            --crystal-glow: #00f0ff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body, html {
+            background: #0d0314; color: #ffffff; font-family: 'Inter', sans-serif; overflow-x: hidden;
+            background: linear-gradient(180deg, #2b0f4c 0%, #702663 40%, #c95c54 70%, #f4a261 100%); 
+            background-attachment: fixed;
+        }
+
+        ::-webkit-scrollbar { display: none; }
+
+        /* ================= CARGADOR ================= */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0d0314; z-index: 9999; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; transition: opacity 0.5s;
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid #f4a261; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .loader-text { letter-spacing: 2px; font-size: 0.9rem; color: #fff; text-transform: uppercase; font-weight: bold;}
+
+        /* ================= NAVEGACIÓN ================= */
+        nav {
+            position: fixed; top: 0; left: 0; width: 100%; padding: 2rem 5%; z-index: 100;
+            display: flex; justify-content: space-between; align-items: center; mix-blend-mode: difference;
+        }
+        .logo { font-size: 1.5rem; font-weight: 700; font-family: 'Playfair Display'; }
+        .nav-links { display: flex; gap: 2rem; }
+        .nav-links a { color: #fff; text-decoration: none; font-size: 0.9rem; font-weight: 500; }
+        .btn-register { border: 1px solid #fff; padding: 0.5rem 1.5rem; border-radius: 50px; }
+
+        /* ================= CAPAS PARALLAX HORIZONTALES (ANCHO 200vw) ================= */
+        .fixed-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; pointer-events: none; }
+        .layer-svg-wide { position: absolute; bottom: 0; left: 0; width: 200vw; height: 50vh; max-width: none; }
+        .layer-extension-wide { position: absolute; top: 100vh; left: 0; width: 200vw; height: 600vh; }
+
+        .sky-darkness {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+            background: #050b14; z-index: 1; opacity: 0; pointer-events: none;
+            transition: background-color 1s ease;
+        }
+
+        .sun {
+            position: absolute; bottom: 20vh; left: 50%; transform: translateX(-50%);
+            width: 40vw; height: 40vw; max-width: 500px;
+            background: radial-gradient(circle, #ffe180 0%, rgba(244,162,97,0.3) 40%, transparent 70%);
+            mix-blend-mode: screen; z-index: 1;
+        }
+
+        #canvas-3d { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 5; pointer-events: none; }
+
+        /* ================= CASCADA ANIMADA 2D ================= */
+        .waterfall-container {
+            position: absolute; bottom: 15vh; left: 110vw; width: 8%; height: 40vh;
+            overflow: hidden; z-index: 4; filter: blur(2px);
+        }
+        .waterfall {
+            width: 100%; height: 200%;
+            background: repeating-linear-gradient(180deg, #7bd5f5 0%, #ffffff 10%, rgba(123,213,245,0.5) 20%);
+            animation: fall 1s linear infinite; opacity: 0.8;
+        }
+        @keyframes fall { 0% { transform: translateY(-50%); } 100% { transform: translateY(0); } }
+
+        /* ================= ANIMALES 2D ADICIONALES ================= */
+        
+        /* Mariposas (Superficie) */
+        .butterfly-container { position: absolute; top: 20vh; left: 10%; width: 300px; height: 300px; z-index: 4; }
+        .butterfly {
+            position: absolute; width: 8px; height: 8px; background: #ffe180;
+            border-radius: 50%; box-shadow: 0 0 12px #ffe180;
+            animation: flyAround 10s ease-in-out infinite alternate;
+        }
+        .butterfly::before, .butterfly::after {
+            content: ''; position: absolute; top: -3px; width: 6px; height: 8px;
+            background: rgba(255,225,128,0.8); border-radius: 50% 50% 0 0;
+        }
+        .butterfly::before { left: -6px; transform-origin: bottom right; animation: flapLeft 0.15s ease-in-out infinite alternate; }
+        .butterfly::after { right: -6px; transform-origin: bottom left; animation: flapRight 0.15s ease-in-out infinite alternate; }
+        @keyframes flapLeft { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(70deg); } }
+        @keyframes flapRight { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(-70deg); } }
+        @keyframes flyAround {
+            0% { transform: translate(0, 0) scale(0.8); }
+            50% { transform: translate(100px, -50px) scale(1.1); }
+            100% { transform: translate(50px, 100px) scale(0.9); }
+        }
+
+        .hummingbird {
+            position: absolute; top: 35vh; left: 15%; width: 25px; height: 15px;
+            background: #ff5e97; box-shadow: 0 0 15px #ff5e97; border-radius: 50% 50% 20% 20%;
+            animation: hoverHumming 6s ease-in-out infinite alternate; z-index: 4;
+        }
+        .hummingbird::after, .hummingbird::before {
+            content: ''; position: absolute; top: -10px; width: 12px; height: 18px;
+            background: rgba(255, 94, 151, 0.6); border-radius: 50%; transform-origin: bottom center;
+            animation: fastFlap 0.04s linear infinite alternate;
+        }
+        .hummingbird::before { left: 2px; }
+        .hummingbird::after { right: 2px; }
+        @keyframes fastFlap { 0% { transform: rotateX(0deg); } 100% { transform: rotateX(80deg); } }
+        @keyframes hoverHumming { 0% { transform: translate(0,0); } 50% { transform: translate(40px, -20px); } 100% { transform: translate(-30px, 10px); } }
+
+        /* Ciervo Geométrico (Montaña Media) */
+        .deer {
+            position: absolute; bottom: 35vh; left: 80vw; width: 50px; height: 70px;
+            z-index: 4; transform-origin: bottom center;
+            animation: deerIdle 6s ease-in-out infinite alternate;
+        }
+        .deer-body { position: absolute; bottom: 20px; left: 10px; width: 30px; height: 18px; background: var(--mountain-mid); border-radius: 4px; }
+        .deer-neck {
+            position: absolute; bottom: 32px; left: 30px; width: 6px; height: 20px;
+            background: var(--mountain-mid); transform: rotate(-25deg); transform-origin: bottom left;
+            animation: deerHeadMove 8s ease-in-out infinite alternate;
+        }
+        .deer-head { position: absolute; top: -5px; right: -8px; width: 14px; height: 8px; background: var(--mountain-mid); border-radius: 4px; transform: rotate(25deg); }
+        .deer-antler { position: absolute; top: -12px; width: 2px; height: 12px; background: var(--mountain-mid); box-shadow: 0 0 5px rgba(255,255,255,0.1); }
+        .deer-antler.left { left: 4px; transform: rotate(-15deg); }
+        .deer-antler.right { left: 8px; transform: rotate(15deg); }
+        .deer-leg { position: absolute; bottom: 0; width: 3px; height: 22px; background: var(--mountain-mid); }
+        .deer-leg.fl { left: 14px; } .deer-leg.fr { left: 19px; } .deer-leg.bl { left: 28px; } .deer-leg.br { left: 32px; }
+
+        @keyframes deerIdle { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02, 0.98); } }
+        @keyframes deerHeadMove { 0%, 100% { transform: rotate(-25deg); } 50% { transform: rotate(-10deg); } }
+
+        /* Lobo Aullando (Montaña Trasera) */
+        .wolf-silhouette {
+            position: absolute; bottom: 48vh; left: 75vw; width: 30px; height: 40px;
+            clip-path: polygon(40% 100%, 70% 100%, 80% 70%, 100% 50%, 80% 30%, 50% 30%, 40% 0%, 30% 20%, 0% 50%, 20% 80%);
+            background: var(--mountain-back); transform-origin: bottom center;
+            animation: howl 8s ease-in-out infinite;
+        }
+        @keyframes howl { 0%, 70%, 100% { transform: rotate(0deg); } 80%, 90% { transform: rotate(-25deg) scale(1.05); } }
+
+        /* Águila Planeadora */
+        .eagle-glide {
+            position: absolute; top: 25vh; left: 5%; width: 100px; height: 40px; z-index: 2;
+            animation: glideRight 30s linear infinite; opacity: 0.5;
+        }
+        .eagle-wing { fill: var(--mountain-back); transform-origin: center; animation: slowFlap 3s ease-in-out infinite alternate; }
+        @keyframes slowFlap { 0% { transform: rotateX(0deg); } 100% { transform: rotateX(40deg); } }
+        @keyframes glideRight { 0% { transform: translate(-10vw, 0); } 100% { transform: translate(110vw, -10vh); } }
+
+        /* Libélulas de cristal */
+        .dragonfly-container { position: absolute; top: 120vh; left: 0; width: 100%; height: 100vh; z-index: 3; pointer-events: none; }
+        .dragonfly {
+            position: absolute; width: 6px; height: 25px; background: var(--crystal-glow);
+            box-shadow: 0 0 10px var(--crystal-glow); border-radius: 50% 50% 10% 10%;
+            animation: dfFly 18s linear infinite;
+        }
+        .dragonfly-wing {
+            position: absolute; top: 3px; width: 20px; height: 5px; background: rgba(0, 240, 255, 0.4);
+            border-radius: 50%; transform-origin: center right; animation: dfFlap 0.05s ease-in-out infinite alternate;
+        }
+        .dragonfly-wing.left { left: -18px; }
+        .dragonfly-wing.right { right: -18px; transform-origin: center left; }
+        @keyframes dfFlap { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(80deg); } }
+        @keyframes dfFly { 0% { transform: translate(110vw, 40vh); } 50% { transform: translate(40vw, 20vh); } 100% { transform: translate(-15vw, 35vh); } }
+
+        /* Murciélagos */
+        .bat-container { position: absolute; top: 150vh; left: 0; width: 100%; height: 100vh; z-index: 3; pointer-events: none; }
+        .bat {
+            position: absolute; width: 25px; height: 10px; background: var(--cave-mid);
+            box-shadow: 0 0 10px rgba(0,240,255,0.4); border-radius: 50% 50% 0 0;
+            animation: batFly 18s linear infinite; transform-origin: center;
+        }
+        .bat-wing {
+            position: absolute; top: 0; width: 12px; height: 10px; background: var(--cave-mid);
+            border-radius: 50% 0 50% 50%; transform-origin: center right;
+            animation: flapLeft 0.18s ease-in-out infinite alternate;
+        }
+        .bat-wing.left { left: -9px; }
+        .bat-wing.right { right: -9px; transform-origin: center left; border-radius: 0 50% 50% 50%; animation-name: flapRight; }
+        @keyframes batFly { 0% { transform: translate(110vw, 20vh) scale(0.6); } 50% { transform: translate(50vw, 5vh) scale(0.9); } 100% { transform: translate(-15vw, 15vh) scale(0.6); } }
+
+        /* Arañas */
+        .silk-spider-container {
+            position: absolute; top: 160vh; left: 15%; width: 1px; height: 250px;
+            background: rgba(0, 240, 255, 0.2); z-index: 6; transform-origin: top center;
+            animation: spiderBob 6s ease-in-out infinite alternate;
+        }
+        .spider {
+            position: absolute; bottom: -8px; left: -4px; width: 10px; height: 8px;
+            background: #00f0ff; border-radius: 50%; box-shadow: 0 0 12px #00f0ff;
+        }
+        @keyframes spiderBob { 0% { height: 120px; } 100% { height: 240px; } }
+
+        /* Caballitos de mar */
+        .seahorse-container { position: absolute; top: 320vh; left: 0; width: 100%; height: 100vh; z-index: 3; pointer-events: none; }
+        .seahorse {
+            position: absolute; width: 15px; height: 35px; background: #00f0ff;
+            box-shadow: 0 0 15px rgba(0,240,255,0.6); border-radius: 50% 50% 20% 50%;
+            animation: seahorseRise 20s linear infinite, seahorseWiggle 3s ease-in-out infinite alternate;
+        }
+        @keyframes seahorseRise { 0% { transform: translateY(110vh); } 100% { transform: translateY(-20vh); } }
+        @keyframes seahorseWiggle { 0% { transform: rotate(-10deg) translateX(0); } 100% { transform: rotate(10deg) translateX(15px); } }
+
+        /* Peces Abisales y Raya */
+        .abyssal-fish-container { position: absolute; top: 480vh; left: 0; width: 100%; height: 150vh; z-index: 7; pointer-events: none; }
+        .abyssal-fish {
+            position: absolute; width: 40px; height: 20px;
+            background: radial-gradient(circle at 75% 30%, #00f0ff 0%, var(--abyssal-mid) 80%);
+            border-radius: 50% 50% 10% 50%; box-shadow: 0 0 15px rgba(0, 240, 255, 0.7);
+            animation: swimLeft 14s linear infinite;
+        }
+        .abyssal-fish::after {
+            content: ''; position: absolute; left: -8px; top: 2px;
+            border-top: 6px solid transparent; border-bottom: 6px solid transparent;
+            border-right: 10px solid #00f0ff; transform-origin: right center;
+            animation: waveTail 0.15s ease-in-out infinite alternate;
+        }
+        @keyframes swimLeft { 0% { transform: translateX(110vw) scaleX(1); } 100% { transform: translateX(-15vw) scaleX(1); } }
+        @keyframes waveTail { 0% { transform: rotateY(-35deg); } 100% { transform: rotateY(35deg); } }
+
+        .manta-ray-container { position: absolute; top: 520vh; left: 0; width: 100%; height: 100vh; z-index: 2; pointer-events: none; }
+        .manta-ray {
+            position: absolute; width: 120px; height: 80px; filter: drop-shadow(0 0 15px #00f0ff);
+            animation: mantaGlide 22s linear infinite;
+        }
+        .manta-wing { fill: var(--abyssal-mid); transform-origin: center; animation: mantaFlap 4s ease-in-out infinite alternate; }
+        @keyframes mantaFlap { 0% { transform: scaleY(0.7); } 100% { transform: scaleY(1.1); } }
+        @keyframes mantaGlide { 0% { transform: translate(110vw, 40vh); } 100% { transform: translate(-20vw, 10vh); } }
+
+        /* Medusas */
+        .jellyfish-container { position: absolute; top: 450vh; left: 0; width: 100%; height: 200vh; z-index: 7; pointer-events: none; }
+        .jellyfish {
+            position: absolute; width: 80px; height: 70px;
+            background: radial-gradient(circle at 50% 30%, rgba(0, 240, 255, 0.6) 0%, rgba(10, 35, 60, 0.2) 80%);
+            border-radius: 50% 50% 20% 20%;
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.8), inset 0 0 15px rgba(255,255,255,0.5);
+            animation: pulseJelly 4s ease-in-out infinite, floatUp 25s linear infinite;
+        }
+        .jellyfish::after {
+            content: ''; position: absolute; bottom: -40px; left: 10%; width: 80%; height: 50px;
+            background: repeating-linear-gradient(90deg, rgba(0, 240, 255, 0.4), transparent 8px);
+            border-radius: 0 0 10px 10px; animation: waveTail 2s ease-in-out infinite alternate; filter: blur(1px);
+        }
+        @keyframes pulseJelly { 0%, 100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.15, 0.8) translateY(-10px); } }
+        @keyframes floatUp { 0% { transform: translateY(120vh); opacity: 0; } 10% { opacity: 0.8; } 90% { opacity: 0.8; } 100% { transform: translateY(-20vh); opacity: 0; } }
+
+        /* Tortuga */
+        .turtle-container { position: absolute; top: 620vh; left: 0; width: 100%; height: 100vh; z-index: 7; pointer-events: none; }
+        .turtle {
+            position: absolute; left: 50%; transform: translateX(-50%); width: 150px; height: 100px;
+            filter: drop-shadow(0 0 20px rgba(0, 240, 255, 0.5)); animation: turtleSwim 12s ease-in-out infinite alternate;
+        }
+        .turtle-shell { fill: var(--abyssal-mid); }
+        .turtle-flipper { fill: #00f0ff; transform-origin: top center; animation: flipperMove 3s ease-in-out infinite alternate; }
+        @keyframes flipperMove { 0% { transform: rotate(-20deg); } 100% { transform: rotate(30deg); } }
+        @keyframes turtleSwim { 0% { transform: translate(-50%, 0) rotate(-5deg); } 100% { transform: translate(-50%, -30px) rotate(5deg); } }
+
+        /* ================= TEXTOS ================= */
+        .content-layer { position: relative; width: 100%; z-index: 10; }
+        .section { height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 0 10%; pointer-events: auto; }
+        
+        .subtitle { font-size: 0.9rem; letter-spacing: 4px; margin-bottom: 1rem; color: #f4a261; text-transform: uppercase; }
+        h1 { font-family: 'Playfair Display', serif; color: #ffffff; font-size: clamp(4rem, 10vw, 10rem); line-height: 0.9; margin-bottom: 1rem; text-shadow: 0 15px 30px rgba(0,0,0,0.6); }
+        h2 { font-family: 'Playfair Display', serif; color: #ffffff; font-size: clamp(3rem, 6vw, 5rem); margin-bottom: 1rem; }
+        .desc { max-width: 500px; font-size: 1.1rem; line-height: 1.7; color: rgba(255,255,255,0.8); margin-bottom: 2rem; }
+        
+        .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 8; pointer-events: none; }
+        .particle { position: absolute; border-radius: 50%; animation: float ease-in-out infinite alternate; }
+        @keyframes float { 0% { transform: translate(0, 0); opacity: 0.1; } 100% { transform: translate(20px, -30px); opacity: 1; } }
+
+    </style>
+
+    <script src="https://unpkg.com/@studio-freight/lenis@1.0.32/dist/lenis.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+</head>
+<body>
+
+    <!-- Cargador -->
+    <div id="loader">
+        <div class="spinner"></div>
+        <div class="loader-text" id="loader-msg">Sincronizando Gravedad 3D... (0/4)</div>
+    </div>
+
+    <nav>
+        <div class="logo">VISITE</div>
+        <div class="nav-links"><a href="#">Explore</a><a href="#" class="btn-register">Start Journey</a></div>
+    </nav>
+
+    <div class="sky-darkness" id="sky-darkness"></div>
+
+    <!-- Capa 1: Sol -->
+    <div class="fixed-layer parallax-bg" data-speed="0.1" style="z-index: 1;">
+        <div class="sun"></div>
+        <div class="butterfly-container">
+            <div class="butterfly" style="left: 10%; top: 20%; animation-delay: 0s;"></div>
+            <div class="butterfly" style="left: 60%; top: 50%; animation-delay: 2s; transform: scale(0.7);"></div>
+        </div>
+        <div class="hummingbird"></div>
+    </div>
+
+    <!-- Capa 2: Montaña Trasera -->
+    <div class="fixed-layer parallax-bg layer-mountain-back-container" data-speed="0.3" style="z-index: 2;">
+        <svg class="layer-svg-wide" viewBox="0 0 2880 400" preserveAspectRatio="none">
+            <path d="M0,400 L0,200 L300,250 L600,100 L1000,220 L1400,50 L1800,250 L2200,100 L2600,200 L2880,150 L2880,400 Z" fill="var(--mountain-back)"/>
+        </svg>
+        <div class="layer-extension-wide" style="background: var(--mountain-back);"></div>
+        <div class="wolf-silhouette"></div>
+        <svg class="eagle-glide" viewBox="0 0 100 40">
+            <path class="eagle-wing" d="M0,20 Q30,0 50,20 Q70,0 100,20 Q80,25 50,22 Q20,25 0,20 Z" />
+        </svg>
+    </div>
+
+    <!-- Capa 3: Montaña Media -->
+    <div class="fixed-layer parallax-bg layer-mountain-mid-container" data-speed="0.5" style="z-index: 3;">
+        <svg class="layer-svg-wide" viewBox="0 0 2880 400" preserveAspectRatio="none">
+            <path d="M0,400 L0,280 L600,180 L1100,260 L1600,120 L2200,290 L2880,200 L2880,400 Z" fill="var(--mountain-mid)"/>
+        </svg>
+        <div class="layer-extension-wide" style="background: var(--mountain-mid);"></div>
+        <div class="deer">
+            <div class="deer-body"></div>
+            <div class="deer-neck">
+                <div class="deer-head">
+                    <div class="deer-antler left"></div>
+                    <div class="deer-antler right"></div>
+                </div>
+            </div>
+            <div class="deer-leg fl"></div><div class="deer-leg fr"></div><div class="deer-leg bl"></div><div class="deer-leg br"></div>
+        </div>
+        <div class="waterfall-container"><div class="waterfall"></div></div>
+    </div>
+
+    <!-- Canvas 3D -->
+    <canvas id="canvas-3d"></canvas>
+
+    <!-- Capa 4: Montaña Frontal Negra -->
+    <div class="fixed-layer parallax-bg layer-mountain-front-container" data-speed="0.8" style="z-index: 6;">
+        <svg class="layer-svg-wide" style="height: 30vh;" viewBox="0 0 2880 300" preserveAspectRatio="none">
+            <path d="M0,300 L0,200 L400,100 L800,250 L1400,50 L2000,200 L2500,150 L2880,200 L2880,300 Z" fill="var(--mountain-front)"/>
+        </svg>
+        <div class="layer-extension-wide" style="background: var(--mountain-front); height: 700vh;"></div>
+    </div>
+
+    <!-- Capas Cueva -->
+    <div class="fixed-layer parallax-bg" data-speed="0.4" style="z-index: 2; top: 150vh;">
+        <svg class="layer-svg" style="top: 0; bottom: auto; transform: scaleY(-1);" viewBox="0 0 1440 400" preserveAspectRatio="none"><path d="M0,400 L0,200 L200,300 L500,100 L800,350 L1100,150 L1440,300 L1440,400 Z" fill="var(--cave-mid)"/></svg>
+        <div class="layer-extension" style="background: var(--cave-mid); top: 50vh;"></div>
+        <div class="dragonfly-container">
+            <div class="dragonfly" style="left: 10%; animation-delay: 0s;"><div class="dragonfly-wing left"></div><div class="dragonfly-wing right"></div></div>
+            <div class="dragonfly" style="left: 70%; animation-delay: 5s;"><div class="dragonfly-wing left"></div><div class="dragonfly-wing right"></div></div>
+        </div>
+        <div class="bat-container">
+            <div class="bat" style="animation-delay: 0s;"><div class="bat-wing left"></div><div class="bat-wing right"></div></div>
+            <div class="bat" style="animation-delay: 4s; top: 15vh;"><div class="bat-wing left"></div><div class="bat-wing right"></div></div>
+        </div>
+        <div class="silk-spider-container"><div class="spider"></div></div>
+        <div class="silk-spider-container" style="left: 80%; animation-delay: 2s;"><div class="spider" style="box-shadow: 0 0 12px #ff5e97; background: #ff5e97;"></div></div>
+    </div>
+
+    <div class="fixed-layer parallax-bg" data-speed="0.9" style="z-index: 6; top: 200vh;">
+        <svg class="layer-svg" viewBox="0 0 1440 400" preserveAspectRatio="none"><path d="M0,400 L0,300 L250,200 L450,280 L700,100 L950,250 L1200,150 L1440,250 L1440,400 Z" fill="var(--cave-front)"/></svg>
+        <div class="layer-extension" style="background: var(--cave-front);"></div>
+    </div>
+
+    <!-- Capas Lago Abisal -->
+    <div class="fixed-layer parallax-bg" data-speed="0.5" style="z-index: 2; top: 380vh;">
+        <svg class="layer-svg" viewBox="0 0 1440 400" preserveAspectRatio="none"><path d="M0,400 L0,250 Q300,150 600,300 T1200,200 L1440,350 L1440,400 Z" fill="var(--abyssal-mid)"/></svg>
+        <div class="layer-extension" style="background: var(--abyssal-mid); top: 50vh;"></div>
+        <div class="seahorse-container">
+            <div class="seahorse" style="left: 20%; animation-delay: 0s;"></div>
+            <div class="seahorse" style="left: 80%; animation-delay: 4s; animation-duration: 25s;"></div>
+        </div>
+    </div>
+
+    <div class="fixed-layer parallax-bg" data-speed="0.9" style="z-index: 6; top: 430vh;">
+        <svg class="layer-svg" viewBox="0 0 1440 400" preserveAspectRatio="none"><path d="M0,400 L0,320 Q400,220 800,340 T1440,300 L1440,400 Z" fill="var(--abyssal-front)"/></svg>
+        <div class="layer-extension" style="background: var(--abyssal-front);"></div>
+        <div class="abyssal-fish-container">
+            <div class="abyssal-fish" style="top: 10vh; animation-delay: 0s; transform: scale(0.8);"></div>
+            <div class="abyssal-fish" style="top: 35vh; animation-delay: 5s; transform: scale(1.1);"></div>
+            <div class="abyssal-fish" style="top: 60vh; animation-delay: 2s; transform: scale(0.9);"></div>
+        </div>
+        <div class="manta-ray-container">
+            <svg class="manta-ray" viewBox="0 0 120 80">
+                <path class="manta-wing" d="M60,40 Q40,10 0,40 Q40,50 60,40 M60,40 Q80,10 120,40 Q80,50 60,40" />
+                <path d="M60,40 Q60,70 58,80" stroke="#00f0ff" stroke-width="1.5" fill="none" />
+            </svg>
+        </div>
+    </div>
+
+    <div class="turtle-container">
+        <svg class="turtle" viewBox="0 0 100 80">
+            <path class="turtle-flipper" d="M50,40 Q70,10 85,25 Q70,35 50,40 M50,40 Q30,10 15,25 Q30,35 50,40" />
+            <ellipse class="turtle-shell" cx="50" cy="45" rx="25" ry="20" />
+            <path d="M50,25 Q50,15 54,12 Q46,12 50,25" fill="#00f0ff" />
+        </svg>
+    </div>
+
+    <!-- Secciones -->
+    <div class="content-layer">
+        <section class="section">
+            <div class="subtitle reveal-text">Welcome to the wild</div>
+            <h1 class="reveal-text">WILD<br>NATURE</h1>
+            <p class="desc reveal-text">Un flamenco vuela de fondo y mariposas de luz revolotean a tu alrededor junto a un colibrí. Haz scroll para ver correr al caballo.</p>
+        </section>
+
+        <section class="section">
+            <div style="max-width: 600px; margin-left: auto; text-align: right;">
+                <div class="subtitle reveal-text">Montañas Medias</div>
+                <h2 class="reveal-text">Trote Contemplativo</h2>
+                <p class="desc reveal-text" style="margin-left: auto;">El caballo ahora ejecuta un galope en cámara lenta e inmóvil sobre su colina, integrándose con el ritmo suave del ciervo y del lobo aullando.</p>
+            </div>
+        </section>
+
+        <section class="section" style="align-items: center; text-align: center;">
+            <div>
+                <div class="subtitle reveal-text" style="color: #fff;">Descenso</div>
+                <h2 class="reveal-text" style="font-size: 3rem; font-style: italic;">La Caída Sutil</h2>
+                <p class="desc reveal-text" style="margin: 0 auto;">Una cigüeña planea majestuosamente entre las nubes y libélulas de cristal revolotean a tu alrededor.</p>
+            </div>
+        </section>
+
+        <section class="section" style="color: #00f0ff;">
+            <div>
+                <div class="subtitle reveal-text" style="color: #00f0ff;">Cueva Oculta</div>
+                <h2 class="reveal-text">Bioluminiscencia</h2>
+                <p class="desc reveal-text">Un guacamayo azul cruza volando la caverna. En el techo, murciélagos y arañas de luz interactúan en la oscuridad.</p>
+            </div>
+        </section>
+
+        <section class="section" style="align-items: center; text-align: center;">
+            <div>
+                <div class="subtitle reveal-text" style="color: #00f0ff;">Abismo</div>
+                <h2 class="reveal-text" style="font-style: italic;">El Lago Subterráneo</h2>
+                <p class="desc reveal-text" style="margin: 0 auto;">El aire se humedece. Entramos en aguas profundas donde caballitos de mar emergen desde el fondo.</p>
+            </div>
+        </section>
+
+        <section class="section" style="color: #00f0ff;">
+            <div style="max-width: 600px; margin-left: auto; text-align: right;">
+                <div class="subtitle reveal-text" style="color: #00f0ff;">Vida Abisal</div>
+                <h2 class="reveal-text">El Vacío Azul</h2>
+                <p class="desc reveal-text" style="margin-left: auto;">Medusas bioluminiscentes, una manta raya de luz y peces de neón nadan lentamente desde el fondo del lago abisal.</p>
+            </div>
+        </section>
+
+        <section class="section" style="align-items: center; text-align: center;">
+            <div>
+                <h2 class="reveal-text">Fin de la Odisea.</h2>
+                <p class="desc reveal-text" style="margin: 0 auto;">Has completado el viaje por el ecosistema vertical custodiado por la tortuga ancestral.</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- Medusas -->
+    <div class="jellyfish-container">
+        <div class="jellyfish" style="left: 15%; animation-delay: 0s; transform: scale(0.8);"></div>
+        <div class="jellyfish" style="left: 45%; animation-delay: 5s; transform: scale(1.1);"></div>
+        <div class="jellyfish" style="left: 75%; animation-delay: 2s; transform: scale(0.9);"></div>
+    </div>
+
+    <div class="particles" id="particles"></div>
+
+    <script>
+        // --- 1. LENIS SCROLL ---
+        const lenis = new Lenis({ duration: 1.5 });
+        function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
+        requestAnimationFrame(raf);
+
+        // --- 2. PARTÍCULAS ---
+        const pContainer = document.getElementById('particles');
+        for(let i=0; i<50; i++) {
+            let p = document.createElement('div'); p.className = 'particle'; p.style.left = Math.random() * 100 + 'vw';
+            if(i < 15) {
+                p.style.top = Math.random() * 200 + 'vh'; p.style.background = '#cfff70'; p.style.boxShadow = '0 0 10px 2px #cfff70';
+            } else if (i < 30) {
+                p.style.top = (Math.random() * 200 + 200) + 'vh'; p.style.background = '#00f0ff'; p.style.boxShadow = '0 0 15px 3px #00f0ff';
+            } else {
+                p.style.top = (Math.random() * 200 + 450) + 'vh'; p.style.background = '#0055ff'; p.style.boxShadow = '0 0 15px 3px #0055ff';
+            }
+            p.style.width = p.style.height = (Math.random() * 4 + 2) + 'px';
+            p.style.animationDuration = (Math.random() * 3 + 2) + 's'; p.style.animationDelay = Math.random() * 2 + 's';
+            pContainer.appendChild(p);
+        }
+
+        // --- 3. CONFIGURACIÓN THREE.JS ---
+        const canvas = document.querySelector('#canvas-3d');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 0, 5); 
+
+        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+        const sun = new THREE.DirectionalLight(0xffddaa, 3); sun.position.set(-5, 5, 5); scene.add(sun);
+        const caveLight = new THREE.PointLight(0x00f0ff, 4, 20); caveLight.position.set(0, -10, 2); scene.add(caveLight);
+
+        // --- 4. CARGA DE FAUNA 3D ---
+        const mixers = [];
+        const clock = new THREE.Clock();
+        const loader = new THREE.GLTFLoader();
+        let flamingo, horse, stork, parrot;
+        let loadedCount = 0;
+
+        function startApp() {
+            document.getElementById('loader').style.opacity = '0';
+            setTimeout(() => { document.getElementById('loader').style.display = 'none'; }, 500);
+            setupGSAP();
+        }
+
+        function checkLoad() {
+            loadedCount++;
+            document.getElementById('loader-msg').innerText = `Descargando Fauna 3D... (${loadedCount}/4)`;
+            if(loadedCount === 4) startApp();
+        }
+
+        setTimeout(() => { if(loadedCount < 4) startApp(); }, 6000);
+
+        // Flamingo (01)
+        loader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/models/gltf/Flamingo.glb', (gltf) => {
+            flamingo = gltf.scene; flamingo.scale.set(0.015, 0.015, 0.015); 
+            flamingo.position.set(4, 2, -2); flamingo.rotation.y = -Math.PI / 4; 
+            scene.add(flamingo);
+            const mixer = new THREE.AnimationMixer(flamingo); mixer.clipAction(gltf.animations[0]).play();
+            mixers.push(mixer); checkLoad();
+        }, undefined, checkLoad);
+
+        // Caballo (02)
+        loader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/models/gltf/Horse.glb', (gltf) => {
+            horse = gltf.scene; horse.scale.set(0.01, 0.01, 0.01);
+            horse.position.set(1.5, -0.6, 0); // Anclado firmemente sobre el pico alto derecho
+            horse.rotation.y = -Math.PI / 3; // Mirando sutilmente a la izquierda
+            scene.add(horse);
+            const mixer = new THREE.AnimationMixer(horse);
+            
+            // LA MAGIA: Ralentizar el movimiento del caballo al 12% para simular paso lento contemplativo
+            const action = mixer.clipAction(gltf.animations[0]);
+            action.timeScale = 0.12; 
+            action.play();
+            
+            mixers.push(mixer); checkLoad();
+        }, undefined, checkLoad);
+
+        // Cigüeña (03)
+        loader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/models/gltf/Stork.glb', (gltf) => {
+            stork = gltf.scene; stork.scale.set(0.012, 0.012, 0.012);
+            stork.position.set(-4, -4, -1); stork.rotation.y = Math.PI / 3;
+            scene.add(stork);
+            const mixer = new THREE.AnimationMixer(stork); mixer.clipAction(gltf.animations[0]).play();
+            mixers.push(mixer); checkLoad();
+        }, undefined, checkLoad);
+
+        // Loro (04)
+        loader.load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/models/gltf/Parrot.glb', (gltf) => {
+            parrot = gltf.scene; parrot.scale.set(0.015, 0.015, 0.015);
+            parrot.position.set(-4, -8.5, 1); parrot.rotation.y = Math.PI / 3;
+            scene.add(parrot);
+            const mixer = new THREE.AnimationMixer(parrot); mixer.clipAction(gltf.animations[0]).play();
+            mixers.push(mixer); checkLoad();
+        }, undefined, checkLoad);
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            const delta = clock.getDelta();
+            mixers.forEach(m => m.update(delta));
+            renderer.render(scene, camera);
+        }
+        animate3D();
+
+        // --- 5. ANIMACIONES GSAP (700vh) ---
+        gsap.registerPlugin(ScrollTrigger);
+        lenis.on('scroll', ScrollTrigger.update);
+        gsap.ticker.add((time) => lenis.raf(time * 1000));
+        gsap.ticker.lagSmoothing(0);
+
+        function setupGSAP() {
+            // Parallax Capas 2D (Eje Vertical Y)
+            gsap.utils.toArray('.parallax-bg').forEach(layer => {
+                const speed = parseFloat(layer.getAttribute('data-speed'));
+                gsap.to(layer, {
+                    y: () => -(ScrollTrigger.maxScroll(window) * speed),
+                    ease: "none",
+                    scrollTrigger: { trigger: "body", start: "top top", end: "bottom bottom", scrub: true }
+                });
+            });
+
+            // Transición de colores de fondo (Cielo -> Cueva -> Abismo)
+            gsap.timeline({ scrollTrigger: { trigger: "body", start: "15% top", end: "80% top", scrub: true }})
+                .to('#sky-darkness', { opacity: 0.98 }, 0)
+                .to('#sky-darkness', { backgroundColor: '#020b14' }, 0.5) 
+                .to('#sky-darkness', { backgroundColor: '#01040a' }, 0.8); 
+
+            // Fade de textos
+            gsap.utils.toArray('.reveal-text').forEach(text => {
+                gsap.from(text, { y: 40, opacity: 0, duration: 1, scrollTrigger: { trigger: text, start: "top 85%", toggleActions: "play none none reverse" }});
+            });
+
+            // TIMELINE SINCRO 3D + DESLIZAMIENTO DE TERRENO HORIZONTAL
+            const tl3D = gsap.timeline({ scrollTrigger: { trigger: "body", start: "top top", end: "bottom bottom", scrub: 1 }});
+
+            // --- ETAPA 1: MOVIMIENTO HORIZONTAL DE TERRENO (Scroll 0.0 a 0.3) ---
+            if(flamingo) tl3D.to(flamingo.position, { x: -4, y: 3, duration: 0.3 }, 0);
+            
+            // Las montañas se deslizan hacia la izquierda a diferentes velocidades (Eje X)
+            tl3D.to('.layer-mountain-back-container', { x: '-20vw', duration: 0.3 }, 0);
+            tl3D.to('.layer-mountain-mid-container', { x: '-50vw', duration: 0.3 }, 0);
+            tl3D.to('.layer-mountain-front-container', { x: '-70vw', duration: 0.3 }, 0);
+
+            // EL CABALLO SE QUEDA QUIETO EN SU COLINA:
+            // Para mantenerlo "pegado" a su montaña mientras esta se desplaza a la izquierda por -50vw,
+            // trasladamos horizontalmente su coordenada X en ThreeJS a la misma velocidad (de 1.5 a -1.5).
+            // Mantiene su Y estática en -0.6, eliminando por completo saltos bruscos.
+            if(horse) {
+                tl3D.to(horse.position, { x: -1.5, y: -0.6, duration: 0.3 }, 0);
+            }
+
+            // --- ETAPA 2: CAMINO A LA CUEVA (Scroll 0.3 a 0.5) ---
+            tl3D.to(camera.position, { y: -4, duration: 0.2 }, 0.3); 
+            if(stork) tl3D.to(stork.position, { x: 4, y: -3.5, duration: 0.2 }, 0.3); 
+
+            // --- ETAPA 3: LA CUEVA DE CRISTAL (Scroll 0.5 a 0.7) ---
+            tl3D.to(camera.position, { y: -8, duration: 0.2 }, 0.5); 
+            if(parrot) tl3D.to(parrot.position, { x: -2, y: -7.5, duration: 0.2 }, 0.5); 
+
+            // --- ETAPA 4: DESCENSO FINAL AL LAGO (Scroll 0.7 a 1.0) ---
+            tl3D.to(camera.position, { y: -14, duration: 0.3 }, 0.7); 
+        }
+
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    </script>
+</body>
+</html>
